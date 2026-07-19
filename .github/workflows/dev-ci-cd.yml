@@ -1,0 +1,70 @@
+# name: Dev CI/CD
+# on:
+#   push:
+#     branches: [dev]
+
+# jobs:
+#   build-test-deploy:
+#     runs-on: ubuntu-latest
+#     environment: dev
+#     env:
+#       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+#       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: "3.11"
+#       - run: pip install -r requirements-dev.txt
+#       - name: Unit tests
+#         run: pytest tests/
+#       - uses: databricks/setup-cli@main
+#       - name: Validate bundle
+#         run: databricks bundle validate -t dev
+#       - name: Deploy to Dev
+#         run: databricks bundle deploy -t dev -var="databricks_host=${{ secrets.DATABRICKS_HOST }}"
+#       - name: Run ETL job in Dev (integration test)
+#         run: databricks bundle run sales_etl_job -t dev
+
+name: Dev CI/CD
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - name: Unit tests
+        run: pytest tests/
+      - uses: databricks/setup-cli@main
+      - name: Validate bundle
+        run: databricks bundle validate -t dev
+      - name: Deploy to Dev
+        run: databricks bundle deploy -t dev
+      - name: Run ETL job in Dev (integration test)
+        run: databricks bundle run sales_etl_job -t dev
+
+  auto-promote-to-uat:
+    needs: build-test-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout uat
+          git merge origin/dev --no-edit
+          git push origin uat

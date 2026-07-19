@@ -1,0 +1,37 @@
+name: UAT CI/CD
+on:
+  push:
+    branches: [uat]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    environment: uat
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest tests/
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate -t uat
+      - run: databricks bundle deploy -t uat -var="databricks_host=${{ secrets.DATABRICKS_HOST }}"
+      - run: databricks bundle run sales_etl_job -t uat
+
+  auto-promote-to-prod:
+    needs: build-test-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout main
+          git merge origin/uat --no-edit
+          git push origin main
