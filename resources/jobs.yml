@@ -1,0 +1,10 @@
+resources:
+  jobs:
+    sales_etl_job:
+      name: "sales_etl_job_${bundle.target}"
+      tasks:
+        - task_key: run_etl
+          notebook_task:
+            notebook_path: ../notebooks/etl_sales.py
+            base_parameters:
+              catalog: "${var.catalog}"

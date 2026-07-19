@@ -1,0 +1,26 @@
+bundle:
+  name: sales-pipeline
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      catalog: dev
+
+  uat:
+    mode: production
+    variables:
+      catalog: uat
+
+  prod:
+    mode: production
+    variables:
+      catalog: prod
+
+variables:
+  catalog:
+    default: "dev"
